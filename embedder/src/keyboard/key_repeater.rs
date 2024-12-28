@@ -35,7 +35,7 @@ impl<BackendData: Backend + 'static> KeyRepeater<BackendData> {
 
         let timer = Timer::from_duration(repeat_delay);
 
-        let callback = self.callback.clone();
+        let callback = self.callback;
         let token = self
             .loop_handle
             .insert_source(timer, move |_, _, data| {

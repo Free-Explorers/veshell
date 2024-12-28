@@ -96,6 +96,7 @@ impl<T: 'static> MethodChannel<T> {
             .set_message_handler(&self.name, binary_handler);
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn set_method_call_mpsc_channel(
         &mut self,
         channel: Option<channel::Sender<(MethodCall<T>, Box<dyn MethodResult<T>>)>>,

@@ -1,4 +1,3 @@
-use callbacks::{key_event_callback, FlutterKeyEventData};
 use embedder::{
     FlutterKeyEvent, FlutterKeyEventType_kFlutterKeyEventTypeDown,
     FlutterKeyEventType_kFlutterKeyEventTypeRepeat, FlutterKeyEventType_kFlutterKeyEventTypeUp,
@@ -8,7 +7,6 @@ use mouse_cursor::mouse_cursor_channel_method_call_handler;
 use platform_channels::encodable_value::EncodableValue;
 use platform_channels::standard_method_codec::StandardMethodCodec;
 use serde_json::json;
-use smithay::backend::renderer::gles::GlesRenderer;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::{c_int, c_void, CString};
@@ -18,9 +16,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::ptr::{null, null_mut};
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tracing::error;
 
 use smithay::backend::renderer::gles::ffi::RGBA8;
 use smithay::output::Output;
@@ -42,7 +38,7 @@ use smithay::{
     utils::{Physical, Size},
 };
 
-use crate::backend::{render, Backend};
+use crate::backend::Backend;
 use crate::flutter_engine::callbacks::{
     gl_external_texture_frame_callback, platform_message_callback, populate_existing_damage,
     post_task_callback, runs_task_on_current_thread_callback, vsync_callback,
@@ -182,7 +178,7 @@ impl<BackendData: Backend + 'static> FlutterEngine<BackendData> {
             .unwrap_or(0);
         debug!("ECHO SOCKET NAME {:?}", socket_number);
         let port = 12345 + socket_number;
-        propagate_vm_service(&host, port)?;
+        propagate_vm_service(host, port)?;
         let assets_path = CString::new(format!("{bundle_root}/data/flutter_assets"))?;
         let icu_data_path = CString::new(format!("{bundle_root}/data/icudtl.dat"))?;
         let executable_path = CString::new(executable_path.as_os_str().as_bytes())?;
@@ -601,7 +597,7 @@ impl<BackendData: Backend + 'static> FlutterEngine<BackendData> {
             type_: event_type,
             physical: physical_key,
             logical: logical_key,
-            character: character,
+            character,
             synthesized: false,
         };
 
@@ -680,7 +676,7 @@ impl<BackendData: Backend + 'static> FlutterEngine<BackendData> {
         self.platform_method_channel.invoke_method(
             "monitor_layout_changed",
             Some(Box::new(json!(MonitorsMessage {
-                monitors: outputs.into_iter().map(|output| MyOutput(output)).collect()
+                monitors: outputs.into_iter().map(MyOutput).collect()
             }))),
             None,
         );
@@ -748,14 +744,14 @@ impl FlutterEngineData {
         Ok(Self {
             gl: Gles2::load_with(|s| unsafe { egl::get_proc_address(s) } as *const _),
             main_egl_context: EGLContext::new_shared_with_config(
-                &egl_display,
-                &root_egl_context,
+                egl_display,
+                root_egl_context,
                 gl_attributes,
                 pixel_format_requirements,
             )?,
             resource_egl_context: EGLContext::new_shared_with_config(
-                &egl_display,
-                &root_egl_context,
+                egl_display,
+                root_egl_context,
                 gl_attributes,
                 pixel_format_requirements,
             )?,

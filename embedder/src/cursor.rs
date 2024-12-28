@@ -1,23 +1,20 @@
 use std::env;
-use std::{collections::HashMap, io::Read, sync::Mutex, time::Duration};
+use std::{collections::HashMap, io::Read, sync::Mutex};
 
-use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::{
     backend::{
         allocator::Fourcc,
         renderer::{
             element::{
                 memory::{MemoryRenderBuffer, MemoryRenderBufferRenderElement},
-                surface::{self, render_elements_from_surface_tree, WaylandSurfaceRenderElement},
-                texture::{TextureBuffer, TextureRenderElement},
-                Id, Kind,
+                surface::{render_elements_from_surface_tree, WaylandSurfaceRenderElement},
+                Kind,
             },
-            gles::GlesTexture,
             ImportAll, ImportMem, Renderer,
         },
     },
     input::pointer::{CursorIcon, CursorImageAttributes, CursorImageStatus},
-    reexports::wayland_server::protocol::wl_surface::{self, WlSurface},
+    reexports::wayland_server::protocol::wl_surface::WlSurface,
     render_elements,
     utils::{
         Buffer as BufferCoords, IsAlive, Logical, Monotonic, Point, Scale, Size, Time, Transform,
@@ -39,9 +36,9 @@ pub struct Cursor {
 
 impl Cursor {
     pub fn load(theme: &CursorTheme, shape: CursorIcon, size: u32) -> Cursor {
-        let icons = load_icon(&theme, shape)
+        let icons = load_icon(theme, shape)
             .map_err(|err| warn!(?err, "Unable to load xcursor, using fallback cursor"))
-            .or_else(|_| load_icon(&theme, CursorIcon::Default))
+            .or_else(|_| load_icon(theme, CursorIcon::Default))
             .unwrap_or_else(|_| {
                 vec![Image {
                     size: 32,
@@ -244,12 +241,12 @@ where
         let hotspot = Point::<i32, BufferCoords>::from((frame.xhot as i32, frame.yhot as i32));
         state.current_image = Some(frame);
 
-        return vec![(
+        vec![(
             CursorRenderElement::Static(
                 MemoryRenderBufferRenderElement::from_buffer(
                     renderer,
                     location.to_physical(scale),
-                    &pointer_image,
+                    pointer_image,
                     None,
                     None,
                     None,
@@ -258,7 +255,7 @@ where
                 .expect("Failed to import cursor bitmap"),
             ),
             hotspot,
-        )];
+        )]
     } else {
         Vec::new()
     }
@@ -275,7 +272,7 @@ where
     <R as Renderer>::TextureId: Clone + 'static,
 {
     let position = location.into();
-    let h: Point<i32, BufferCoords> = with_states(&surface, |states| {
+    let h: Point<i32, BufferCoords> = with_states(surface, |states| {
         states
             .data_map
             .get::<Mutex<CursorImageAttributes>>()

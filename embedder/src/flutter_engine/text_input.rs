@@ -60,7 +60,7 @@ impl TextInput {
         if changed {
             self.send_state_update();
         }
-        return changed;
+        changed
     }
 
     fn set_client(&mut self, id: u64, input_type: &str, input_action: &str) {

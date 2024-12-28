@@ -25,7 +25,7 @@ fn main() {
     println!("cargo:rerun-if-changed={FLUTTER_ENGINE_LIBS_DIR}");
 
     let flutter_engine_build = match option_env!("FLUTTER_ENGINE_BUILD") {
-        Some(build) => FlutterEngineBuild::from_str(&build)
+        Some(build) => FlutterEngineBuild::from_str(build)
             .expect("FLUTTER_ENGINE_BUILD must be one of debug, profile, release"),
         None => FlutterEngineBuild::Debug,
     };
@@ -41,7 +41,7 @@ fn main() {
 
 fn get_flutter_engine_revision() -> String {
     let mut flutter_cmd = Command::new("flutter");
-    flutter_cmd.args(&["doctor", "-v"]);
+    flutter_cmd.args(["doctor", "-v"]);
 
     let mut output = flutter_cmd.output();
 
@@ -57,7 +57,7 @@ fn get_flutter_engine_revision() -> String {
         let flutter_path = flutter_path.trim();
         println!("cargo:rerun-if-changed={flutter_path}");
         let mut flutter_cmd = Command::new(flutter_path);
-        flutter_cmd.args(&["doctor", "-v"]);
+        flutter_cmd.args(["doctor", "-v"]);
 
         output = flutter_cmd.output();
     }
@@ -113,7 +113,7 @@ fn should_download_flutter_engine_library(
     {
         return false;
     }
-    return true;
+    true
 }
 
 fn download_flutter_engine_library(
@@ -136,7 +136,7 @@ fn download_flutter_engine_library(
     let mut archive = zip::ZipArchive::new(io::Cursor::new(bytes)).expect("Not an archive");
     let mut lib = archive
         .by_name(FLUTTER_ENGINE_LIB_NAME)
-        .expect(&format!("{FLUTTER_ENGINE_LIB_NAME} not found in archive"));
+        .unwrap_or_else(|_| panic!("{FLUTTER_ENGINE_LIB_NAME} not found in archive"));
 
     // Extract the shared library.
     let lib_dir = format!("{FLUTTER_ENGINE_LIBS_DIR}/{flutter_engine_build}");
@@ -153,7 +153,7 @@ fn download_flutter_engine_library(
 }
 
 fn download_from_url(url: &str) -> Result<bytes::Bytes, reqwest::Error> {
-    Ok(reqwest::blocking::get(url)?.error_for_status()?.bytes()?)
+    reqwest::blocking::get(url)?.error_for_status()?.bytes()
 }
 
 fn generate_embedder_bindings() {

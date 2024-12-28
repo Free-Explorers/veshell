@@ -104,7 +104,7 @@ pub fn on_shell_ready<BackendData: Backend + 'static>(
         platform_method_channel.invoke_method(
             "new_x11_surface",
             Some(Box::new(json!(NewX11Surface {
-                x11_surface_id: State::<BackendData>::get_x11_surface_id(&x11_surface),
+                x11_surface_id: State::<BackendData>::get_x11_surface_id(x11_surface),
                 override_redirect: x11_surface.is_override_redirect(),
             }))),
             None,
@@ -117,7 +117,7 @@ pub fn on_shell_ready<BackendData: Backend + 'static>(
         platform_method_channel.invoke_method(
             "x11_properties_changed",
             Some(Box::new(json!({
-                "x11SurfaceId": State::<BackendData>::get_x11_surface_id(&x11_surface),
+                "x11SurfaceId": State::<BackendData>::get_x11_surface_id(x11_surface),
                 "title": if !x11_surface.title().is_empty() { Some(x11_surface.title()) } else { None },
                 "windowClass": x11_surface.class(),
                 "instance": if !x11_surface.instance().is_empty() {
@@ -135,7 +135,7 @@ pub fn on_shell_ready<BackendData: Backend + 'static>(
                 "surface_associated",
                 Some(Box::new(json!({
                     "surfaceId":  get_surface_id(x11_surface.wl_surface().unwrap().borrow()),
-                    "x11SurfaceId": State::<BackendData>::get_x11_surface_id(&x11_surface),
+                    "x11SurfaceId": State::<BackendData>::get_x11_surface_id(x11_surface),
                 }))),
                 None,
             );

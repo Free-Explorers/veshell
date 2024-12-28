@@ -1,8 +1,7 @@
-use std::ffi::CString;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use smithay::backend::input::{InputBackend, KeyState, KeyboardKeyEvent};
+use smithay::backend::input::KeyState;
 use smithay::backend::session::Session;
 use smithay::input::keyboard::ModifiersState;
 use smithay::utils::SERIAL_COUNTER;
@@ -10,7 +9,6 @@ use tracing::{debug, error, info};
 use xkbcommon::xkb::{Keycode, Keysym};
 
 use crate::backend::Backend;
-use crate::flutter_engine::embedder::FlutterKeyEvent;
 use crate::state::State;
 
 pub mod key_mapping;
@@ -85,7 +83,8 @@ pub fn handle_keyboard_event<BackendData: Backend + 'static>(
     data.flutter_engine
         .as_mut()
         .unwrap()
-        .send_key_event(veshell_key_event, false);
+        .send_key_event(veshell_key_event, false)
+        .unwrap();
 
     // Initiate key repeat.
     // The callback that gets called repeatedly is defined in the constructor of `State`.
@@ -132,7 +131,7 @@ fn handle_embedder_hotkeys<BackendData: Backend + 'static>(
         return true;
     }
 
-    return false;
+    false
 }
 
 pub fn post_flutter_handle_key_event<BackendData: Backend + 'static>(

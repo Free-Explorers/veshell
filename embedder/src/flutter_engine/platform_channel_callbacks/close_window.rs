@@ -69,7 +69,6 @@ pub fn close_window<BackendData: Backend + 'static>(
                 format!("Surface {} has an invalid role", payload.surface_id),
                 None,
             );
-            return;
         }
     }
 }

@@ -54,10 +54,6 @@ use smithay::{
 use tracing::{info, warn};
 
 use crate::cursor::CursorState;
-use crate::flutter_engine::embedder::{
-    FlutterKeyEvent, FlutterKeyEventType, FlutterKeyEventType_kFlutterKeyEventTypeDown,
-    FlutterKeyEventType_kFlutterKeyEventTypeUp,
-};
 use crate::flutter_engine::wayland_messages::{
     PopupMessage, SubsurfaceMessage, SurfaceMessage, SurfaceRole, ToplevelMessage,
     XdgSurfaceMessage, XdgSurfaceRole,
@@ -104,6 +100,7 @@ pub struct State<BackendData: Backend + 'static> {
     pub pointer_focus: Option<(PointerFocusTarget, Point<f64, Logical>)>,
     pub surfaces: HashMap<u64, WlSurface>,
     pub subsurfaces: HashMap<u64, WlSurface>,
+    #[allow(clippy::type_complexity)]
     pub texture_ids_per_surface_id: HashMap<u64, Vec<(i64, Size<i32, BufferCoords>)>>,
     pub texture_swapchains: HashMap<i64, TextureSwapChain>,
     pub tx_fbo: Option<channel::Sender<Option<Dmabuf>>>,
@@ -251,7 +248,8 @@ impl<BackendData: Backend + 'static> State<BackendData> {
                 data.flutter_engine
                     .as_mut()
                     .unwrap()
-                    .send_key_event(event, true);
+                    .send_key_event(event, true)
+                    .unwrap();
             },
         );
 
@@ -332,7 +330,7 @@ impl<BackendData: Backend + 'static> State<BackendData> {
             .texture_ids_per_surface_id
             .get(&surface_id)
             .and_then(|ids| ids.last().cloned())
-            .and_then(|(id, size)| Some((id, Some(size))))
+            .map(|(id, size)| (id, Some(size)))
             .unwrap_or((0, None));
 
         // TODO: Serialize all the rectangles instead of merging them into one.
@@ -460,11 +458,7 @@ impl<BackendData: Backend + 'static> State<BackendData> {
             return None;
         }
 
-        let parent_id = if let Some(ref parent) = parent {
-            Some(get_surface_id(&parent))
-        } else {
-            None
-        };
+        let parent_id = parent.as_ref().map(get_surface_id);
 
         Some(ToplevelMessage {
             parent_surface_id: parent_id,

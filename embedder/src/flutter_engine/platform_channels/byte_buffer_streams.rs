@@ -14,7 +14,7 @@ impl<'b> ByteBufferStreamReader<'b> {
     }
 }
 
-impl<'b> ByteStreamReader for ByteBufferStreamReader<'b> {
+impl ByteStreamReader for ByteBufferStreamReader<'_> {
     fn read_byte(&mut self) -> u8 {
         if self.location >= self.buffer.len() {
             eprintln!("Invalid read in StandardCodecByteStreamReader");
@@ -52,7 +52,7 @@ impl<'b> ByteBufferStreamWriter<'b> {
     }
 }
 
-impl<'b> ByteStreamWriter for ByteBufferStreamWriter<'b> {
+impl ByteStreamWriter for ByteBufferStreamWriter<'_> {
     fn write_byte(&mut self, value: u8) {
         self.buffer.push(value);
     }

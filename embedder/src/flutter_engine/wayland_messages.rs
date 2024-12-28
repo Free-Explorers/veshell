@@ -187,21 +187,11 @@ impl Serialize for MyOutput {
         )?;
         state.serialize_field("scale", &output.current_scale().fractional_scale())?;
         state.serialize_field("location", &MyPoint(output.current_location()))?;
-        state.serialize_field(
-            "currentMode",
-            &output.current_mode().map(|mode| MyMode(mode)),
-        )?;
-        state.serialize_field(
-            "preferredMode",
-            &output.preferred_mode().map(|mode| MyMode(mode)),
-        )?;
+        state.serialize_field("currentMode", &output.current_mode().map(MyMode))?;
+        state.serialize_field("preferredMode", &output.preferred_mode().map(MyMode))?;
         state.serialize_field(
             "modes",
-            &output
-                .modes()
-                .into_iter()
-                .map(|mode| MyMode(mode))
-                .collect::<Vec<_>>(),
+            &output.modes().into_iter().map(MyMode).collect::<Vec<_>>(),
         )?;
         state.end()
     }

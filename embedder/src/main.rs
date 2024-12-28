@@ -1,12 +1,6 @@
-use std::{
-    env,
-    fs::{self},
-    panic,
-    path::PathBuf,
-};
+use std::env;
 
 use backend::Backend;
-use backtrace::Backtrace;
 use log::debug;
 use smithay::{
     reexports::wayland_server::{
@@ -17,9 +11,7 @@ use smithay::{
         with_surface_tree_downward, CompositorClientState, SurfaceAttributes, TraversalAction,
     },
 };
-use tracing::error;
-use tracing_appender::rolling;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::flutter_engine::FlutterEngine;
 use crate::mouse_button_tracker::MouseButtonTracker;

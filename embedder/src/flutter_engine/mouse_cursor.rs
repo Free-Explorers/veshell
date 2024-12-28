@@ -1,17 +1,12 @@
 //! https://api.flutter.dev/flutter/services/SystemChannels/textInput-constant.html
 
-use input_linux::sys::KEY_ENTER;
-use serde_json::json;
 use smithay::input::pointer::CursorIcon;
 use smithay::reexports::calloop::channel::Event;
 use tracing::info;
 
 use crate::backend::Backend;
 use crate::flutter_engine::platform_channels::method_call::MethodCall;
-use crate::flutter_engine::platform_channels::method_channel::MethodChannel;
 use crate::flutter_engine::platform_channels::method_result::MethodResult;
-use crate::flutter_engine::platform_channels::text_input_model::TextInputModel;
-use crate::flutter_engine::platform_channels::text_range::TextRange;
 use crate::state::State;
 
 use super::platform_channels::encodable_value::EncodableValue;
@@ -40,7 +35,7 @@ pub fn mouse_cursor_channel_method_call_handler<BackendData: Backend + 'static>(
                     device = value.int32();
                 }
             }
-            if let (Some(kind), Some(device)) = (kind, device) {
+            if let (Some(kind), Some(_device)) = (kind, device) {
                 let mut cursor_state = data.cursor_state.lock().unwrap();
                 match kind {
                     "basic" => cursor_state.set_shape(CursorIcon::Default),
@@ -62,6 +57,6 @@ pub fn mouse_cursor_channel_method_call_handler<BackendData: Backend + 'static>(
                 None,
             );
         }
-        return result.not_implemented();
+        result.not_implemented()
     }
 }

@@ -2,9 +2,8 @@ use std::ffi::c_void;
 use std::ptr::null_mut;
 
 use smithay::backend::renderer::gles::ffi;
-use smithay::backend::renderer::ImportDma;
 use smithay::reexports::calloop::channel;
-use tracing::{debug, error};
+use tracing::error;
 
 use crate::backend::Backend;
 use crate::flutter_engine::embedder::{
@@ -14,8 +13,6 @@ use crate::flutter_engine::embedder::{
 use crate::flutter_engine::platform_channels::binary_messenger::BinaryMessenger;
 use crate::flutter_engine::{Baton, FlutterEngine};
 use crate::keyboard::VeshellKeyEvent;
-
-use super::embedder::FlutterKeyEvent;
 
 pub unsafe extern "C" fn make_current<BackendData>(user_data: *mut c_void) -> bool
 where

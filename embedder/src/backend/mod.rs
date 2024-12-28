@@ -1,7 +1,4 @@
-use smithay::backend::{
-    renderer::{gles::GlesRenderer, ImportAll, ImportDma, ImportMem, Renderer},
-    session::libseat::LibSeatSession,
-};
+use smithay::backend::{renderer::gles::GlesRenderer, session::libseat::LibSeatSession};
 
 pub mod drm_backend;
 pub mod render;

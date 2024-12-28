@@ -1,4 +1,3 @@
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::io;
 use std::path::Path;
@@ -11,21 +10,15 @@ use smithay::backend::allocator::gbm::{GbmAllocator, GbmBufferFlags};
 use smithay::backend::allocator::{Allocator, Fourcc, Slot, Swapchain};
 use smithay::backend::drm::compositor::DrmCompositor;
 use smithay::backend::drm::{
-    CreateDrmNodeError, DrmAccessError, DrmDevice, DrmDeviceFd, DrmError, DrmEvent,
-    DrmEventMetadata, DrmNode, NodeType,
+    CreateDrmNodeError, DrmAccessError, DrmDevice, DrmDeviceFd, DrmError, DrmEvent, DrmNode,
+    NodeType,
 };
-use smithay::backend::egl::context::ContextPriority;
 use smithay::backend::egl::{EGLContext, EGLDevice, EGLDisplay};
 use smithay::backend::libinput::{LibinputInputBackend, LibinputSessionInterface};
-use smithay::backend::renderer::damage::{Error as OutputDamageTrackerError, OutputDamageTracker};
-use smithay::backend::renderer::element::texture::{TextureBuffer, TextureRenderElement};
-use smithay::backend::renderer::element::utils::{Relocate, RelocateRenderElement};
-use smithay::backend::renderer::element::{Kind, RenderElement};
+use smithay::backend::renderer::element::texture::TextureRenderElement;
 use smithay::backend::renderer::gles::ffi::Gles2;
-use smithay::backend::renderer::gles::{GlesRenderer, GlesTexture};
-use smithay::backend::renderer::multigpu::gbm::GbmGlesBackend;
-use smithay::backend::renderer::multigpu::{GpuManager, MultiRenderer};
-use smithay::backend::renderer::{ImportAll, ImportDma, ImportEgl, ImportMem, Renderer, Texture};
+use smithay::backend::renderer::gles::GlesRenderer;
+use smithay::backend::renderer::{ImportAll, ImportDma, ImportEgl, Renderer};
 use smithay::backend::session::libseat::LibSeatSession;
 use smithay::backend::session::{libseat, Event as SessionEvent, Session};
 use smithay::backend::udev::{all_gpus, primary_gpu, UdevBackend, UdevEvent};
@@ -35,7 +28,6 @@ use smithay::desktop::utils::OutputPresentationFeedback;
 use smithay::input::pointer::CursorImageStatus;
 use smithay::output::Mode;
 use smithay::output::{Output, PhysicalProperties, Subpixel};
-use smithay::reexports::ash::khr::swapchain;
 use smithay::reexports::calloop::channel::Event;
 use smithay::reexports::calloop::RegistrationToken;
 use smithay::reexports::calloop::{EventLoop, LoopHandle};
@@ -46,7 +38,7 @@ use smithay::reexports::wayland_server::backend::GlobalId;
 use smithay::reexports::wayland_server::protocol::wl_shm;
 use smithay::reexports::wayland_server::Display;
 use smithay::reexports::wayland_server::DisplayHandle;
-use smithay::utils::{DeviceFd, IsAlive, Point, Rectangle, Transform};
+use smithay::utils::{DeviceFd, IsAlive, Rectangle};
 use smithay::wayland::dmabuf::{
     DmabufFeedbackBuilder, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier,
 };
@@ -55,55 +47,13 @@ use tracing::{debug, error, info, warn};
 
 use smithay_drm_extras::drm_scanner::{DrmScanEvent, DrmScanner};
 use smithay_drm_extras::edid::EdidInfo;
-use tracing_subscriber::field::debug;
 
-use crate::cursor::{draw_cursor, CursorRenderElement};
 use crate::flutter_engine::FlutterEngine;
 use crate::state;
 use crate::{flutter_engine::EmbedderChannels, send_frames_surface_tree, State};
 
-use super::render::{get_render_elements, VeshellRenderElements, CLEAR_COLOR};
+use super::render::{get_render_elements, CLEAR_COLOR};
 use super::Backend;
-
-type DrmRenderer<'a> = MultiRenderer<
-    'a,
-    'a,
-    GbmGlesBackend<GlesRenderer, DrmDeviceFd>,
-    GbmGlesBackend<GlesRenderer, DrmDeviceFd>,
->;
-
-/// Trait for getting the underlying `GlesRenderer`.
-pub trait AsGlesRendererMut {
-    fn as_gles_renderer_mut(&mut self) -> &mut GlesRenderer;
-}
-
-impl AsGlesRendererMut for GlesRenderer {
-    fn as_gles_renderer_mut(&mut self) -> &mut GlesRenderer {
-        self
-    }
-}
-
-impl<'render> AsGlesRendererMut for DrmRenderer<'render> {
-    fn as_gles_renderer_mut(&mut self) -> &mut GlesRenderer {
-        self.as_mut()
-    }
-}
-
-pub trait AsGlesRenderer {
-    fn as_gles_renderer(&self) -> &GlesRenderer;
-}
-
-impl AsGlesRenderer for GlesRenderer {
-    fn as_gles_renderer(&self) -> &GlesRenderer {
-        self
-    }
-}
-
-impl<'render> AsGlesRenderer for DrmRenderer<'render> {
-    fn as_gles_renderer(&self) -> &GlesRenderer {
-        self.as_ref()
-    }
-}
 
 pub struct DrmBackend {
     pub session: LibSeatSession,
@@ -412,12 +362,7 @@ pub fn run_drm_backend() {
     state.tx_fbo = Some(tx_fbo.clone());
     state.flutter_engine = Some(flutter_engine);
 
-    let nodes_available: Vec<DrmNode> = state
-        .backend_data
-        .gpus
-        .iter()
-        .map(|(node, _)| *node)
-        .collect();
+    let nodes_available: Vec<DrmNode> = state.backend_data.gpus.keys().copied().collect();
 
     // Initialize already present connectors.
     for node in nodes_available {
@@ -441,7 +386,10 @@ pub fn run_drm_backend() {
     event_loop
         .handle()
         .insert_source(udev_backend, move |event, _, data| match event {
-            UdevEvent::Added { device_id, path } => {
+            UdevEvent::Added {
+                device_id: _,
+                path: _,
+            } => {
                 /* debug!("UdevEvent::Added {{ device_id: {device_id}");
                 if let Err(err) = DrmNode::from_dev_id(device_id)
                     .map_err(DeviceAddError::DrmNode)
@@ -456,7 +404,7 @@ pub fn run_drm_backend() {
                     data.device_changed(node)
                 }
             }
-            UdevEvent::Removed { device_id } => {
+            UdevEvent::Removed { device_id: _ } => {
                 /* debug!("UdevEvent::Removed {{ device_id: {device_id} }}");
                 if let Ok(node) = DrmNode::from_dev_id(device_id) {
                     data.device_removed(node)
@@ -737,7 +685,7 @@ impl State<DrmBackend> {
             }
         };
 
-        let mut surface = SurfaceData {
+        let surface = SurfaceData {
             dh: self.display_handle.clone(),
             device_id: node,
             crtc,
@@ -849,9 +797,9 @@ impl State<DrmBackend> {
             .loop_handle
             .insert_source(
                 notifier,
-                move |event, metadata, data: &mut State<_>| match event {
+                move |event, _metadata, data: &mut State<_>| match event {
                     DrmEvent::VBlank(crtc) => {
-                        data.frame_finish(node, crtc, metadata);
+                        data.frame_finish(node, crtc);
                     }
                     DrmEvent::Error(error) => {
                         error!("{:?}", error);
@@ -869,7 +817,7 @@ impl State<DrmBackend> {
             .and_then(|x| x.try_get_render_node().ok().flatten())
             .unwrap_or(node);
 
-        let mut renderer =
+        let renderer =
             unsafe { GlesRenderer::new(EGLContext::new(&egl_display).unwrap()) }.unwrap();
 
         /*         self.backend_data
@@ -951,40 +899,7 @@ impl State<DrmBackend> {
         }
     }
 
-    fn device_removed(&mut self, node: DrmNode) {
-        let device = if let Some(device) = self.backend_data.gpus.get_mut(&node) {
-            device
-        } else {
-            return;
-        };
-
-        let crtcs: Vec<_> = device
-            .drm_scanner
-            .crtcs()
-            .map(|(info, crtc)| (info.clone(), crtc))
-            .collect();
-
-        for (connector, crtc) in crtcs {
-            self.connector_disconnected(node, connector, crtc);
-        }
-
-        // drop the backends on this side
-        if let Some(mut backend_data) = self.backend_data.gpus.remove(&node) {
-            /*             self.backend_data
-            .gpu_manager
-            .as_mut()
-            .remove_node(&backend_data.render_node); */
-
-            self.loop_handle.remove(backend_data.registration_token);
-        }
-    }
-
-    fn frame_finish(
-        &mut self,
-        node: DrmNode,
-        crtc: crtc::Handle,
-        metadata: &mut Option<DrmEventMetadata>,
-    ) {
+    fn frame_finish(&mut self, node: DrmNode, crtc: crtc::Handle) {
         let gpu_data = match self.backend_data.gpus.get_mut(&node) {
             Some(gpu_data) => gpu_data,
             None => {
@@ -1001,7 +916,7 @@ impl State<DrmBackend> {
             }
         };
 
-        let output = if let Some(output) = self.space.outputs().find(|o| {
+        let _output = if let Some(output) = self.space.outputs().find(|o| {
             o.user_data().get::<UdevOutputId>()
                 == Some(&UdevOutputId {
                     device_id: surface.device_id,
@@ -1028,7 +943,7 @@ impl State<DrmBackend> {
             .frame_submitted()
             .map_err(Into::<SwapBuffersError>::into)
         {
-            Ok(user_data) => true,
+            Ok(_user_data) => true,
             Err(err) => {
                 warn!("Error during rendering: {:?}", err);
                 match err {
@@ -1135,7 +1050,7 @@ impl State<DrmBackend> {
             None => return,
         };
 
-        let render_node = surface.render_node;
+        let _render_node = surface.render_node;
         /* let primary_gpu = self.backend_data.primary_gpu;
         let mut renderer = if primary_gpu == render_node {
             self.backend_data.gpu_manager.single_renderer(&render_node)
@@ -1154,7 +1069,7 @@ impl State<DrmBackend> {
             slot
         } else {
             // Flutter hasn't rendered anything yet. Render a solid color to schedule the next VBLANK.
-            initial_render(surface, renderer);
+            initial_render(surface, renderer).unwrap();
             return;
         };
 
@@ -1185,7 +1100,7 @@ impl State<DrmBackend> {
             &self.cursor_image_status,
             &self.cursor_state,
             self.pointer.current_location(),
-            self.surface_id_under_cursor != None,
+            self.surface_id_under_cursor.is_some(),
         );
 
         let rendered = surface
@@ -1193,12 +1108,11 @@ impl State<DrmBackend> {
             .render_frame(renderer, &elements, [0.0, 0.0, 0.0, 0.0]);
 
         match rendered {
-            Ok(frame_result) => match surface.compositor.queue_frame(None) {
+            Ok(_frame_result) => match surface.compositor.queue_frame(None) {
                 Ok(()) => {}
                 Err(err) => {
                     warn!("error queueing frame: {err}");
                     warn!("drm active: {:?}", gpu_data.drm_device.is_active());
-                    return;
                 }
             },
             Err(err) => {
@@ -1310,7 +1224,7 @@ where
     let render = surface
         .compositor
         .render_frame::<_, TextureRenderElement<_>>(renderer, &[], CLEAR_COLOR);
-    if let Err(err) = render {
+    if let Err(_err) = render {
         return Err(SwapBuffersError::TemporaryFailure(
             "Failed to render".into(),
         ));
